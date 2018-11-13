@@ -68,11 +68,10 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
 
         self.nb_feature = X.shape[1]
         self.nb_classes = len(np.unique(y))
-
         
 
-        # X_bias =         
-        # self.theta_  = 
+        X_bias = np.c_[ np.ones(X.shape[0]), X ]        
+        self.theta_ = np.random.rand(self.nb_feature + 1, self.nb_classes)
         
 
         for epoch in range( self.n_epochs):
@@ -116,7 +115,11 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
         except AttributeError:
             raise RuntimeError("You must train classifer before predicting data!")
         
-        pass
+        X_bias = np.c_[ np.ones(X.shape[0]), X ]
+        z = X_bias @ self.theta_
+        p = np.apply_along_axis(self._softmax, 1, z)
+        
+        return p
 
 
         """
@@ -139,9 +142,14 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
             getattr(self, "theta_")
         except AttributeError:
             raise RuntimeError("You must train classifer before predicting data!")
-        pass
-
-    
+            
+        X_bias = np.c_[ np.ones(X.shape[0]), X ]
+        p = self.predict_proba(X, y)
+        
+        predictions = p.argmax(axis=1)
+        
+        return predictions#self._one_hot(predictions)
+        
 
     def fit_predict(self, X, y=None):
         self.fit(X, y)
@@ -188,8 +196,7 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
     
     def _cost_function(self,probabilities, y ): 
         pass
-    
-
+   
     
     """
         In :
@@ -209,7 +216,9 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
     
     
     def _one_hot(self,y):
-        pass
+        y_one_hot = np.zeros((y.size, y.max()+1))
+        y_one_hot[np.arange(y.size),y] = 1
+        return y_one_hot
 
 
     """
@@ -224,7 +233,9 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
     """
     
     def _softmax(self,z):
-        pass
+        exp_z = np.exp(z)
+        p = exp_z / np.sum(exp_z)
+        return p
     
 
     """
