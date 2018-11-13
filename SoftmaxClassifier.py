@@ -195,7 +195,22 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
     """
     
     def _cost_function(self,probabilities, y ): 
-        pass
+        m = probabilities.shape[0]
+        # One-hot encode y
+        y_oh = self._one_hot(y)
+        # Ensure that probabilities are not equal to either 0. or 1. using self.eps
+        p = np.clip(probabilities, self.eps, 1-self.eps)
+        # Compute log_loss
+        J = 0
+        
+        for i in range(m): # on itere sur les lignes
+            # trouver l'index contenant le 1 dans y_oh
+            c = np.argmax(y_oh[i,:]) # class
+            J += np.log(p[i,c])
+        
+        J = - J / m
+        
+        return J
    
     
     """
@@ -216,7 +231,7 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
     
     
     def _one_hot(self,y):
-        y_one_hot = np.zeros((y.size, y.max()+1))
+        y_one_hot = np.zeros((y.size, self.nb_classes))
         y_one_hot[np.arange(y.size),y] = 1
         return y_one_hot
 
