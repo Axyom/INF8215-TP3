@@ -232,9 +232,13 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
     
     
     def _one_hot(self,y):
-        y_one_hot = np.zeros((y.size, self.nb_classes))
-        y_one_hot[np.arange(y.size),y] = 1
-        return y_one_hot
+        oneHot = np.zeros((len(y), y.max() +1))
+        oneHot[np.arange(y.size), y] = 1
+        if not(0 in y):
+            oneHot = np.delete(oneHot, 0, 1)
+            return oneHot
+        else:
+            return oneHot
 
 
     """
@@ -274,13 +278,7 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
 
     def _get_gradient(self,X_bias,y, probas):
         m = probas.shape[0]
-        delta = (np.transpose(X_bias) @ (probas - self._one_hot(y))) / m
-        
-        """if (self.regularization) :
-            print('theta = ' + str(self.theta_))
-            print('L2 = ' + str(self.alpha * np.sum(self.theta_[:,1:]**2)))
-            delta += self.alpha * np.sum(self.theta_[:,1:]**2)"""
-        
+        delta = (np.transpose(X_bias) @ (probas - self._one_hot(y))) / m        
         return delta
     
     
