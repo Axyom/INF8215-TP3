@@ -30,26 +30,19 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
         self.theta_ = np.random.rand(self.nb_feature + 1, self.nb_classes)
         
 
-        for epoch in range( self.n_epochs):
-            #Je calcule les logits
-#             print('Old theta')
-#             print(self.theta_)
-            logits = X_bias @ self.theta_  
-            #Je transforme en proba avec softmax
-            p = self.predict_proba(X,y)
-#             print("Proba")
-#             print(p)
-            loss = self._cost_function(p, y) 
-#             print("Perte")
-#             print(loss)
-#             print("Gradient ")
-#             print(self._get_gradient(X_bias,y, p))
-            self.theta_ = self.theta_ - self.lr * self._get_gradient(X_bias,y, p)
-#             print(" newtheta_")
-#             print(self.theta_)
+#         for epoch in range( self.n_epochs):
+#             #Je calcule les logits
+
+#             logits = X_bias @ self.theta_  
+#             #Je transforme en proba avec softmax
+#             p = self.predict_proba(X,y)
+
+#             loss = self._cost_function(p, y) 
+
+#             self.theta_ = self.theta_ - self.lr * self._get_gradient(X_bias,y, p)
+
             if (len(self.losses_) > 0 ):
                 diff = self.losses_[-1]-loss
-#                 print(diff)
                 self.losses_.append(loss)
                 if (abs(diff) < self.threshold):
                     return self
