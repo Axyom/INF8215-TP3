@@ -82,7 +82,7 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
             self.theta_ -= self.lr * self._get_gradient(X_bias,y, p)
             #print(self.theta_)
             self.losses_.append(loss)
-            print(loss)
+            #print(loss)
 
 #             if self.early_stopping:
 #                 if (len(self.losses_) > 0 ):
