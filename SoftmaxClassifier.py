@@ -5,7 +5,7 @@ import numpy as np
 class SoftmaxClassifier(BaseEstimator, ClassifierMixin):  
     """A softmax classifier"""
 
-    def __init__(self, lr = 0.1, alpha = 100, n_epochs = 1000, eps = 1.0e-5,threshold = 1.0e-10 , regularization = True, early_stopping = True):
+    def __init__(self, lr = 0.1, alpha = 1, n_epochs = 1000, eps = 1.0e-5,threshold = 1.0e-5 , regularization = True, early_stopping = True):
        
         """
             self.lr : the learning rate for weights update during gradient descent
@@ -79,12 +79,19 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
             # logits =             
             p = self.predict_proba(X,y)
             loss = self._cost_function(p, y)              
-            self.theta_ -= epoch * self._get_gradient(X_bias,y, p)
-            
+            self.theta_ -= self.lr * self._get_gradient(X_bias,y, p)
+            #print(self.theta_)
             self.losses_.append(loss)
+            print(loss)
 
-            if self.early_stopping:
-                pass
+#             if self.early_stopping:
+#                 if (len(self.losses_) > 0 ):
+#                     diff = self.losses_[-1]-loss
+#                     self.losses_.append(loss)
+#                     if (abs(diff) < self.threshold):
+#                         return self
+#             else:
+#                 self.losses_.append(loss)
 
 
         return self
@@ -169,8 +176,9 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
     """    
 
     def score(self, X, y=None):
-        pass
-    
+        sc.predict_proba(X,y)
+        
+           
 
     """
         Private methods, their names begin with an underscore
@@ -209,7 +217,7 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
         J = - J / m
         
         if self.regularization:
-            J += self.alpha * np.sum(self.theta_[:,1:])
+            J += self.alpha * np.sum(self.theta_[1:,:]**2)
         
         return J
    
@@ -252,12 +260,14 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
         Probabilities
     """
     
-    def _softmax(self,z):  
-        def softmax(z):
-            exp_z = np.exp(z)
-            return exp_z / np.sum(exp_z)
-
-        return np.apply_along_axis(softmax, 1, z)
+    def _softmax(self,z):
+        SM = np.empty(z.shape)
+        temp = np.amax(z, axis=1)
+        for i in range(z.shape[0]):
+            SM[i,:] = np.exp(z[i,:]-temp[i])
+            SM[i,:] /= np.sum(SM[i,:])
+                              
+        return SM
     
 
     """
@@ -278,7 +288,9 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
 
     def _get_gradient(self,X_bias,y, probas):
         m = probas.shape[0]
-        delta = (np.transpose(X_bias) @ (probas - self._one_hot(y))) / m        
+        delta = (np.transpose(X_bias) @ (probas - self._one_hot(y))) / m
+        if (self.regularization) :
+            delta[1:,:] += 2*self.alpha*self.theta_[1:,:]
         return delta
     
     
