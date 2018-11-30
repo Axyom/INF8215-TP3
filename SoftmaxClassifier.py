@@ -30,59 +30,43 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
         self.theta_ = np.random.rand(self.nb_feature + 1, self.nb_classes)
         
 
-#         for epoch in range( self.n_epochs):
-#             #Je calcule les logits
-
-#             logits = X_bias @ self.theta_  
-#             #Je transforme en proba avec softmax
-#             p = self.predict_proba(X,y)
-
-#             loss = self._cost_function(p, y) 
-
-#             self.theta_ = self.theta_ - self.lr * self._get_gradient(X_bias,y, p)
-
-            if (len(self.losses_) > 0 ):
-                diff = self.losses_[-1]-loss
-                self.losses_.append(loss)
-                if (abs(diff) < self.threshold):
-                    return self
-            else:
-                self.losses_.append(loss)
-                
+        for epoch in range( self.n_epochs):
+            logits = X_bias @ self.theta_  
+            p = self.predict_proba(X,y)
+            loss = self._cost_function(p, y) 
+            self.theta_ = self.theta_ - self.lr * self._get_gradient(X_bias,y, p)
+            self.losses_.append(loss)
+            if self.early_stopping:
+                if (len(self.losses_) > 1 ):
+                    diff = self.losses_[-1]-self.losses_[-2]
+                    if (abs(diff) < self.threshold):
+                        return self
         return self
 
     
     def predict_proba(self, X, y=None):
         try:
             getattr(self, "theta_")
+            X_bias = np.c_[ np.ones(X.shape[0]), X ]
+            z = np.dot(X_bias, self.theta_)
+            p = self._softmax(z)
+            return p
         except AttributeError:
             raise RuntimeError("You must train classifer before predicting data!")
-#         print("X")
-#         print(X)
-#         print("Theta")
-#         print(self.theta_)
-        X_bias = np.c_[ np.ones(X.shape[0]), X ]
-#         print("X biais")
-#         print(X_bias)
-        z = np.dot(X_bias, self.theta_)
-#         print("Z")
-#         print(z)
-        p = self._softmax(z)
-#         print("Softmax")
-#         print(p)
-        return p
+        
 
     
     def predict(self, X, y=None):
         try:
             getattr(self, "theta_")
+            temp = np.unique(y)
+            X_bias = np.c_[ np.ones(X.shape[0]), X ]
+            p = self.predict_proba(X, y)
+            predictions = p.argmax(axis=1)
+            return predictions
         except AttributeError:
             raise RuntimeError("You must train classifer before predicting data!")
-        temp = np.unique(y)
-        X_bias = np.c_[ np.ones(X.shape[0]), X ]
-        p = self.predict_proba(X, y)
-        predictions = p.argmax(axis=1)
-        return predictions #self._one_hot(predictions)
+        
         
 
     def fit_predict(self, X, y=None):
@@ -100,16 +84,8 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
         p = np.clip(probabilities, self.eps, 1-self.eps)
         J = 0     
         J = - np.sum(y_oh*np.log(p))/ m
-#         for i in range(y_oh.shape[0]):
-#             for k in range(y_oh.shape[1]):
-#                 J = J + y_oh[k][i]*mt.log(p[k][i])
-#         J= -J/m
         if self.regularization:
             l2 = 0
-#             for i in range(self.nb_feature):
-#                 for k in range(1,self.nb_classes):
-#                     l2 = l2 + self.theta_[k,i]**2
-#             l2 = l2 * self.alpha
             l2= (self.alpha * np.sum(self.theta_[1:,:]**2))
             J = J + l2
         
