@@ -1,12 +1,23 @@
 from sklearn.base import BaseEstimator, ClassifierMixin
 import numpy as np
-import math as mt
+
 
 class SoftmaxClassifier(BaseEstimator, ClassifierMixin):  
     """A softmax classifier"""
 
-    def __init__(self, lr = 0.1, alpha = 100, n_epochs = 1000, eps = 1.0e-5,threshold = 1.0e-10 , regularization = True, early_stopping = True):
+    def __init__(self, lr = 0.1, alpha = 1, n_epochs = 1000, eps = 1.0e-5,threshold = 1.0e-5 , regularization = True, early_stopping = True):
        
+        """
+            self.lr : the learning rate for weights update during gradient descent
+            self.alpha: the regularization coefficient 
+            self.n_epochs: the number of iterations
+            self.eps: the threshold to keep probabilities in range [self.eps;1.-self.eps]
+            self.regularization: Enables the regularization, help to prevent overfitting
+            self.threshold: Used for early stopping, if the difference between losses during 
+                            two consecutive epochs is lower than self.threshold, then we stop the algorithm
+            self.early_stopping: enables early stopping to prevent overfitting
+        """
+
         self.lr = lr 
         self.alpha = alpha
         self.n_epochs = n_epochs
@@ -16,6 +27,35 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
         self.early_stopping = early_stopping
         
 
+
+    """
+        Public methods, can be called by the user
+        To create a custom estimator in sklearn, we need to define the following methods:
+        * fit
+        * predict
+        * predict_proba
+        * fit_predict        
+        * score
+    """
+
+
+    """
+        In:
+        X : the set of examples of shape nb_example * self.nb_features
+        y: the target classes of shape nb_example *  1
+        Do:
+        Initialize model parameters: self.theta_
+        Create X_bias i.e. add a column of 1. to X , for the bias term
+        For each epoch
+            compute the probabilities
+            compute the loss
+            compute the gradient
+            update the weights
+            store the loss
+        Test for early stopping
+        Out:
+        self, in sklearn the fit method returns the object itself
+    """
 
     def fit(self, X, y=None):
         
@@ -31,92 +71,209 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
         
 
         for epoch in range( self.n_epochs):
-            logits = X_bias @ self.theta_  
+
+            # logits =             
             p = self.predict_proba(X,y)
-            loss = self._cost_function(p, y) 
-            self.theta_ = self.theta_ - self.lr * self._get_gradient(X_bias,y, p)
+            loss = self._cost_function(p, y)              
+            self.theta_ -= self.lr * self._get_gradient(X_bias,y, p)
+            #print(self.theta_)
             self.losses_.append(loss)
-            if self.early_stopping:
-                if (len(self.losses_) > 1 ):
-                    diff = self.losses_[-1]-self.losses_[-2]
-                    if (abs(diff) < self.threshold):
-                        return self
+            #print(loss)
+
+#             if self.early_stopping:
+#                 if (len(self.losses_) > 0 ):
+#                     diff = self.losses_[-1]-loss
+#                     self.losses_.append(loss)
+#                     if (abs(diff) < self.threshold):
+#                         return self
+#             else:
+#                 self.losses_.append(loss)
+
+
         return self
 
     
+
+   
+    
+
+    """
+        In: 
+        X without bias
+        Do:
+        Add bias term to X
+        Compute the logits for X
+        Compute the probabilities using softmax
+        Out:
+        Predicted probabilities
+    """
+
     def predict_proba(self, X, y=None):
         try:
             getattr(self, "theta_")
-            X_bias = np.c_[ np.ones(X.shape[0]), X ]
-            z = np.dot(X_bias, self.theta_)
-            p = self._softmax(z)
-            return p
         except AttributeError:
             raise RuntimeError("You must train classifer before predicting data!")
         
+        X_bias = np.c_[ np.ones(X.shape[0]), X ]
+        z = X_bias @ self.theta_
+        p = self._softmax(z)
+        
+        return p
+
+
+        """
+        In: 
+        X without bias
+        Do:
+        Add bias term to X
+        Compute the logits for X
+        Compute the probabilities using softmax
+        Predict the classes
+        Out:
+        Predicted classes
+    """
 
     
     def predict(self, X, y=None):
         try:
             getattr(self, "theta_")
-            temp = np.unique(y)
-            X_bias = np.c_[ np.ones(X.shape[0]), X ]
-            p = self.predict_proba(X, y)
-            predictions = p.argmax(axis=1)
-            return predictions
         except AttributeError:
             raise RuntimeError("You must train classifer before predicting data!")
+            
+        X_bias = np.c_[ np.ones(X.shape[0]), X ]
+        p = self.predict_proba(X, y)
         
+        predictions = p.argmax(axis=1)
+        
+        return predictions #self._one_hot(predictions)
         
 
     def fit_predict(self, X, y=None):
         self.fit(X, y)
-        return self.predict(X,y)   
+        return self.predict(X,y)
+
+
+    """
+        In : 
+        X set of examples (without bias term)
+        y the true labels
+        Do:
+            predict probabilities for X
+            Compute the log loss without the regularization term
+        Out:
+        log loss between prediction and true labels
+    """    
 
     def score(self, X, y=None):
-        probabilities = self.predict(X)
-        return self._cost_function(probabilities, y )
+        p = self.predict_proba(X,y)
+        reg_buf = self.regularization
+        self.regularization = False
+        loss = self._cost_function(p, y)
+        self.regularization = reg_buf
+        
+        return loss
 
+    """
+        Private methods, their names begin with an underscore
+    """
+
+    """
+        In :
+        y without one hot encoding
+        probabilities computed with softmax
+        Do:
+        One-hot encode y
+        Ensure that probabilities are not equal to either 0. or 1. using self.eps
+        Compute log_loss
+        If self.regularization, compute l2 regularization term
+        Ensure that probabilities are not equal to either 0. or 1. using self.eps
+        Out:
+        J
+    """
+    
     def _cost_function(self,probabilities, y ): 
         m = probabilities.shape[0]
         # One-hot encode y
         y_oh = self._one_hot(y)
+        # Ensure that probabilities are not equal to either 0. or 1. using self.eps
         p = np.clip(probabilities, self.eps, 1-self.eps)
-        J = 0     
-        J = - np.sum(y_oh*np.log(p))/ m
+        # Compute log_loss
+        J = 0
+        
+        for i in range(m): # on itere sur les lignes
+            # trouver l'index contenant le 1 dans y_oh
+            c = np.argmax(y_oh[i,:]) # class
+            J += np.log(p[i,c])
+        
+        J = - J / m
+        
         if self.regularization:
-            l2 = 0
-            l2= (self.alpha * np.sum(self.theta_[1:,:]**2))
-            J = J + l2
+            J += self.alpha * np.sum(self.theta_[1:,:]**2)
         
         return J
+   
+    
+    """
+        In :
+        Target y: nb_examples * 1
+        Do:
+        One hot-encode y
+        [1,1,2,3,1] --> [[1,0,0],
+                         [1,0,0],
+                         [0,1,0],
+                         [0,0,1],
+                         [1,0,0]]
+        Out:
+        y one-hot encoded
+    """
 
+    
+    
     def _one_hot(self,y):
-        temp = np.unique(y)
-        oneHot = np.zeros((len(y), self.nb_classes))
-        j=0
-        for i in y:
-            index = list(temp).index(i)
-            oneHot[j][index]=1
-            j += 1
-        return oneHot
+        oneHot = np.zeros((len(y), y.max() +1))
+        oneHot[np.arange(y.size), y] = 1
+        if not(0 in y):
+            oneHot = np.delete(oneHot, 0, 1)
+            return oneHot
+        else:
+            return oneHot
 
+
+    """
+        In :
+        Logits: (self.nb_features +1) * self.nb_classes
+        Do:
+        Compute softmax on logits
+        Out:
+        Probabilities
+    """
+    
     def _softmax(self,z):
         SM = np.empty(z.shape)
-        temp = np.amax(z, axis = 1)
+        temp = np.amax(z, axis=1)
         for i in range(z.shape[0]):
-            SM[i,:]  = np.exp(z[i,:] - temp[i])
+            SM[i,:] = np.exp(z[i,:]-temp[i])
             SM[i,:] /= np.sum(SM[i,:])
+                              
         return SM
+    
+
+    """
+        In:
+        X with bias
+        y without one hot encoding
+        probabilities resulting of the softmax step
+        Do:
+        One-hot encode y
+        Compute gradients
+        If self.regularization add l2 regularization term
+        Out:
+        Gradient
+    """
 
     def _get_gradient(self,X_bias,y, probas):
         m = probas.shape[0]
-        loss = probas - self._one_hot(y)
-        xTrans = X_bias.transpose()
-        # Delta : number of features + 1 * number of classes 
-        delta = np.dot(xTrans, loss)
-        if self.regularization:
-            delta[1:,:] = delta[1:,:] + self.alpha * self.theta_[1:,:]
-        return delta/m
-    
-    
+        delta = (np.transpose(X_bias) @ (probas - self._one_hot(y))) / m
+        if (self.regularization) :
+            delta[1:,:] += 2*self.alpha*self.theta_[1:,:]
+        return delta
