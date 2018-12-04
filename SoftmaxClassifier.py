@@ -77,17 +77,22 @@ class SoftmaxClassifier(BaseEstimator, ClassifierMixin):
             loss = self._cost_function(p, y)              
             self.theta_ -= self.lr * self._get_gradient(X_bias,y, p)
             #print(self.theta_)
-            self.losses_.append(loss)
-            #print(loss)
+            #self.losses_.append(loss)
+            print(len(self.losses_))
+            print(loss)
 
-#             if self.early_stopping:
-#                 if (len(self.losses_) > 0 ):
-#                     diff = self.losses_[-1]-loss
-#                     self.losses_.append(loss)
-#                     if (abs(diff) < self.threshold):
-#                         return self
-#             else:
-#                 self.losses_.append(loss)
+            if self.early_stopping:
+                if (len(self.losses_) > 0 ):
+                    diff = self.losses_[-1]-loss
+                    print("diff=")
+                    print(diff)
+                    self.losses_.append(loss)
+                    if (abs(diff) < self.threshold):
+                        return self
+                else: 
+                    self.losses_.append(loss)
+            else:
+                self.losses_.append(loss)
 
 
         return self
